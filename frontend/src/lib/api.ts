@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { AssignmentResult } from '../types/paper'
 
 const api = axios.create({
-  baseURL: '',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',
   headers: { 'Content-Type': 'application/json' },
   timeout: 10000
 })
