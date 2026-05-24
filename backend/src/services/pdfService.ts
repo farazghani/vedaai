@@ -1,0 +1,137 @@
+import puppeteer from 'puppeteer'
+import type { Difficulty, GeneratedPaper } from '../types/paper.js'
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function difficultyColor(d: Difficulty): string {
+  return d === 'easy' ? '#16a34a' : d === 'medium' ? '#d97706' : '#dc2626'
+}
+
+function difficultyBg(d: Difficulty): string {
+  return d === 'easy' ? '#dcfce7' : d === 'medium' ? '#fef3c7' : '#fee2e2'
+}
+
+export async function generatePDF(paper: GeneratedPaper): Promise<Buffer> {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Georgia', serif; font-size: 13px; color: #1a1a1a; padding: 40px; }
+  .header { text-align: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 16px; margin-bottom: 20px; }
+  .header h1 { font-size: 20px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+  .header h2 { font-size: 15px; font-weight: normal; margin-top: 4px; }
+  .meta { display: flex; justify-content: space-between; font-size: 12px; margin-top: 10px; }
+  .student-block { border: 1px solid #ccc; padding: 14px 20px; margin-bottom: 24px; }
+  .student-block h3 { font-size: 13px; font-weight: bold; margin-bottom: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .student-row { display: flex; gap: 40px; }
+  .student-field { flex: 1; }
+  .student-field label { font-size: 11px; color: #555; display: block; margin-bottom: 2px; }
+  .student-field .line { border-bottom: 1px solid #333; height: 22px; width: 100%; }
+  .section-block { margin-bottom: 28px; }
+  .section-title { font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-bottom: 4px; }
+  .section-instruction { font-size: 11px; color: #555; font-style: italic; margin-bottom: 14px; }
+  .question { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
+  .q-num { font-weight: bold; min-width: 28px; font-size: 13px; }
+  .q-body { flex: 1; }
+  .q-text { font-size: 13px; line-height: 1.6; margin-bottom: 6px; }
+  .q-meta { display: flex; align-items: center; gap: 10px; }
+  .q-marks { font-size: 11px; color: #555; }
+  .badge { font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 12px; text-transform: capitalize; }
+  .options { margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .option { font-size: 12px; color: #333; }
+  .footer { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 10px; text-align: center; font-size: 11px; color: #888; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>${escapeHtml(paper.subject)}</h1>
+    <h2>Topic: ${escapeHtml(paper.topic)} &nbsp;|&nbsp; Grade: ${escapeHtml(paper.gradeLevel)}</h2>
+    <div class="meta">
+      <span>Total Marks: <strong>${paper.totalMarks}</strong></span>
+      <span>Time Allowed: <strong>${paper.duration} minutes</strong></span>
+    </div>
+  </div>
+
+  <div class="student-block">
+    <h3>Student Information</h3>
+    <div class="student-row">
+      <div class="student-field"><label>Name</label><div class="line"></div></div>
+      <div class="student-field"><label>Roll Number</label><div class="line"></div></div>
+      <div class="student-field"><label>Section</label><div class="line"></div></div>
+    </div>
+  </div>
+
+  ${paper.sections
+    .map(
+      (section) => `
+    <div class="section-block">
+      <div class="section-title">${escapeHtml(section.title)} &nbsp;<span style="font-weight:normal;font-size:12px">(${section.totalMarks} Marks)</span></div>
+      <div class="section-instruction">${escapeHtml(section.instruction)}</div>
+      ${section.questions
+        .map(
+          (q, i) => `
+        <div class="question">
+          <div class="q-num">Q${i + 1}.</div>
+          <div class="q-body">
+            <div class="q-text">${escapeHtml(q.text)}</div>
+            ${
+              q.options
+                ? `
+              <div class="options">
+                ${q.options
+                  .map(
+                    (opt, oi) => `
+                  <div class="option">${String.fromCharCode(65 + oi)}) ${escapeHtml(opt)}</div>
+                `
+                  )
+                  .join('')}
+              </div>
+            `
+                : ''
+            }
+            <div class="q-meta">
+              <span class="badge" style="background:${difficultyBg(q.difficulty)};color:${difficultyColor(q.difficulty)}">${q.difficulty}</span>
+              <span class="q-marks">[${q.marks} mark${q.marks > 1 ? 's' : ''}]</span>
+            </div>
+          </div>
+        </div>
+      `
+        )
+        .join('')}
+    </div>
+  `
+    )
+    .join('')}
+
+  <div class="footer">Generated by VedaAI Assessment Creator &nbsp;|&nbsp; All the best!</div>
+</body>
+</html>`
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  })
+
+  try {
+    const page = await browser.newPage()
+    await page.setContent(html, { waitUntil: 'networkidle0' })
+    const pdf = await page.pdf({
+      format: 'A4',
+      margin: { top: '20mm', bottom: '20mm', left: '20mm', right: '20mm' },
+      printBackground: true,
+    })
+    console.log('[PDF] Generated PDF, size:', pdf.length, 'bytes')
+    return Buffer.from(pdf)
+  } finally {
+    await browser.close()
+  }
+}
