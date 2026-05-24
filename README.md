@@ -3,8 +3,8 @@
 > A full-stack application that allows teachers to create assignments and generate AI-powered question papers using MiniMax M2.7.
 
 ## Live Demo
-- Frontend: [your-vercel-url]
-- Backend: [your-railway-url]
+- Frontend: https://vedaai-eight.vercel.app/
+- Backend: https://vedaai-backend-9vyj.onrender.com/
 
 ## Architecture Overview
 
