@@ -5,7 +5,6 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   MONGODB_URI: z.string().min(1).default('mongodb://localhost:27017/vedaai'),
   REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
-  ANTHROPIC_API_KEY: z.string().min(1, 'ANTHROPIC_API_KEY is required'),
   FRONTEND_URL: z.string().min(1).default('http://localhost:3000'),
   MINIMAX_API_KEY: z.string().min(1, 'MINIMAX_API_KEY is required'),
 })
