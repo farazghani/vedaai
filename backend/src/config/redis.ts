@@ -1,17 +1,19 @@
-import Redis from 'ioredis'
+import { Redis } from 'ioredis'
 import { env } from './env.js'
 
 export const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: null,
-  enableReadyCheck: true,
+  lazyConnect: true,
 })
 
 export const redisClient = redis
+
+redis.on('error', (error: Error) => {
+  console.error('[Redis] Connection error:', error.message)
+})
 
 redis.on('connect', () => {
   console.log('Redis connected')
 })
 
-redis.on('error', (error) => {
-  console.error('Redis connection error:', error)
-})
+export default redis
